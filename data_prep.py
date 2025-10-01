@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import helpers as hp
 
 TRAINING_DATA = Path(__file__).parent / "training_data/disc_calibration.tsv"
 training_cal = pd.read_csv(TRAINING_DATA, sep="\t")
@@ -146,17 +147,27 @@ def _compute_chip_features (training_df: pd.DataFrame) -> pd.DataFrame:
         columns=lambda c: c.replace("<lambda_0>", "q10").replace("<lambda_1>", "q90")
     )
 
-    return df
-
-
+    return chip_agg
 
 
 def main():
+    # Include chip_uid and remove unneeded columns
     identified_df = _include_chip_uid(training_cal)
+
+    # Add relative patterns (deltas, differences, ratios)
     relative_patterns = _compute_relative_patterns(identified_df)
+
+    # Add local context (mean, std, z-score). Export.
     local_context = _compute_local_context(relative_patterns)
+    hp.df_to_csv_no_index(local_context, "a_channel_training_data")
+
+    # Create chip features table with aggregate functions for all channels (mean, std, min, max...). Export.
     chip_features = _compute_chip_features(identified_df)
-    print (relative_patterns)
+    hp.df_to_csv_index(chip_features, "b_chip_training_data")
+
+    print("Workflow finished")
+
+
 
 if __name__ == "__main__":
     main()
